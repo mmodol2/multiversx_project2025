@@ -1,0 +1,1 @@
+/home/pwd_is_123/codigo/ejemplos/crowdfunding/target/debug/crowdfunding-sc-meta: /home/pwd_is_123/codigo/ejemplos/crowdfunding/meta/src/main.rs /home/pwd_is_123/codigo/ejemplos/crowdfunding/src/crowdfunding_sc.rs

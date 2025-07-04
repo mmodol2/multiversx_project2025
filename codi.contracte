@@ -1,0 +1,42 @@
+********** creo wallet
+mxpy wallet new --format pem --outfile lamevawallet.pem
+
+
+****** he TX eGLD ..
+
+*********** peta per que es data mes tard que quan ho he executat (OJO!)
+mxpy contract deploy --bytecode ./output/crowdfunding-sc.wasm --proxy=https://devnet-gateway.multiversx.com --recall-nonce --arguments 10000000000000000000 1750076105 --gas-limit 20000000 --pem=lamevawallet.pem --send
+
+fail:erd1qqqqqqqqqqqqqpgqe092g6vq4xq3nzgelt6mrhm07dlpdvls8xwslvjk55
+
+
+
+********Pel time stamp
+https://www.epochconverter.com/
+25/06/25 02:23:14 (timestamp: 1750810994)
+
+mxpy contract deploy --bytecode ./output/crowdfunding-sc.wasm --proxy=https://devnet-gateway.multiversx.com --recall-nonce --arguments 10000000000000000000 1750810994 --gas-limit 20000000 --pem=lamevawallet.pem --send
+
+Exit:erd1qqqqqqqqqqqqqpgqcmel0nnptj98xy4xzrucrls7x54h8s6a8xwstkctyk
+
+
+mxpy contract deploy --bytecode ./output/crowdfunding-sc.wasm --proxy=https://devnet-gateway.multiversx.com --recall-nonce --arguments 10000000000000000000 1751323156 --gas-limit 20000000 --pem=lamevawallet.pem --send
+
+
+
+
+*** recompilar amb els canvis
+sc-meta all build
+
+*** dos script 
+
+./upgrade.sh 
+*** actualitzar contracte
+
+./setmax.sh
+*** ficar max per wallet a 0.1eGLD
+
+
+Provar de TX mes de 0.1eGLD
+200000000000000000
+

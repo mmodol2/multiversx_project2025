@@ -1,0 +1,1 @@
+/home/pwd_is_123/codigo/test/crowdfunding/target/wasm32v1-none/release/crowdfunding_wasm.wasm: /home/pwd_is_123/codigo/test/crowdfunding/src/crowdfunding.rs /home/pwd_is_123/codigo/test/crowdfunding/wasm/src/lib.rs
