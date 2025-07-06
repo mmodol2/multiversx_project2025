@@ -1,4 +1,3 @@
-
 #![no_std]
 
 use multiversx_sc::derive_imports::*;
@@ -13,19 +12,30 @@ pub enum Status {
     Failed,
 }
 
-/// An empty contract. To be used as a template when starting a new contract from scratch.
 #[multiversx_sc::contract]
 pub trait CrowdfundingSc {
     #[init]
-    fn init(&self, target: BigUint, deadline: u64) {
+    fn init(
+        &self,
+        target: BigUint,
+        deadline: u64,
+        min_per_tx: BigUint,
+        max_per_wallet: BigUint,
+        max_total: BigUint,
+    ) {
         require!(target > 0, "Target must be more than 0");
         self.target().set(target);
 
-        require!(
-            deadline > self.get_current_time(),
-            "Deadline can't be in the past"
-        );
+        require!(deadline > self.get_current_time(), "Deadline can't be in the past");
         self.deadline().set(deadline);
+
+        require!(min_per_tx > 0, "Min per tx must be > 0");
+        require!(max_per_wallet > 0, "Max per wallet must be > 0");
+        require!(max_total > 0, "Max total must be > 0");
+
+        self.min_per_tx().set(min_per_tx);
+        self.max_per_wallet().set(max_per_wallet);
+        self.max_total().set(max_total);
     }
 
     #[upgrade]
@@ -35,30 +45,36 @@ pub trait CrowdfundingSc {
     #[payable("EGLD")]
     fn fund(&self) {
         let payment = self.call_value().egld().clone_value();
+        let current_time = self.get_current_time();
 
-        let current_time = self.blockchain().get_block_timestamp();
-        require!(
-            current_time < self.deadline().get(),
-            "cannot fund after deadline"
-        );
+        require!(current_time < self.deadline().get(), "cannot fund after deadline");
 
+        // ✅ mínim per transacció
+        let min_per_tx = self.min_per_tx().get();
+        require!(payment >= min_per_tx, "Below minimum per transaction");
+
+        // ✅ màxim per wallet acumulat
         let caller = self.blockchain().get_caller();
         let deposited_amount = self.deposit(&caller).get();
-        let new_total = &deposited_amount + &payment;
+        let new_total_wallet = &deposited_amount + &payment;
 
-        // Validació del límit si està establert
-        if !self.max_per_wallet().is_empty() {
-            let max = self.max_per_wallet().get();
-            require!(
-                new_total <= max,
-                "Has superat el límit d'aportació per wallet"
-            );
-        }
-        
-        self.deposit(&caller).set(new_total);
-        //self.deposit(&caller).set(deposited_amount + payment);
+        let max_per_wallet = self.max_per_wallet().get();
+        require!(
+            new_total_wallet <= max_per_wallet,
+            "Exceeded max per wallet"
+        );
 
+        // ✅ màxim global del projecte
+        let sc_balance = self.get_current_funds();
+        let new_total_project = &sc_balance + &payment;
+        let max_total = self.max_total().get();
 
+        require!(
+            new_total_project <= max_total,
+            "Exceeded max total for project"
+        );
+
+        self.deposit(&caller).set(new_total_wallet);
     }
 
     #[endpoint]
@@ -104,13 +120,21 @@ pub trait CrowdfundingSc {
             .get_sc_balance(&EgldOrEsdtTokenIdentifier::egld(), 0)
     }
 
-
-    // Endpoint per establir el límit per wallet (només owner)
     #[only_owner]
-    #[endpoint(setMaxPerWallet)]
-    fn set_max_per_wallet(&self, max: BigUint) {
-        require!(max > 0, "El límit ha de ser més gran que 0");
-        self.max_per_wallet().set(&max);
+    #[endpoint(setLimits)]
+    fn set_limits(
+        &self,
+        min_per_tx: BigUint,
+        max_per_wallet: BigUint,
+        max_total: BigUint,
+    ) {
+        require!(min_per_tx > 0, "Min per tx must be > 0");
+        require!(max_per_wallet > 0, "Max per wallet must be > 0");
+        require!(max_total > 0, "Max total must be > 0");
+
+        self.min_per_tx().set(&min_per_tx);
+        self.max_per_wallet().set(&max_per_wallet);
+        self.max_total().set(&max_total);
     }
 
     // private
@@ -133,8 +157,15 @@ pub trait CrowdfundingSc {
     #[storage_mapper("deposit")]
     fn deposit(&self, donor: &ManagedAddress) -> SingleValueMapper<BigUint>;
 
-    // Nou storage: límit per wallet
+    #[view(getMinPerTx)]
+    #[storage_mapper("min_per_tx")]
+    fn min_per_tx(&self) -> SingleValueMapper<BigUint>;
+
     #[view(getMaxPerWallet)]
     #[storage_mapper("max_per_wallet")]
     fn max_per_wallet(&self) -> SingleValueMapper<BigUint>;
+
+    #[view(getMaxTotal)]
+    #[storage_mapper("max_total")]
+    fn max_total(&self) -> SingleValueMapper<BigUint>;
 }

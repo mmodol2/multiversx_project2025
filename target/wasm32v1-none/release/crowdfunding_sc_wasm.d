@@ -1,1 +1,1 @@
-/home/pwd_is_123/codigo/ejemplos/crowdfunding/target/wasm32v1-none/release/crowdfunding_sc_wasm.wasm: /home/pwd_is_123/codigo/ejemplos/crowdfunding/src/crowdfunding_sc.rs /home/pwd_is_123/codigo/ejemplos/crowdfunding/wasm/src/lib.rs
+/home/pwd_is_123/codigo/ejemplos/multiversx_project2025/target/wasm32v1-none/release/crowdfunding_sc_wasm.wasm: /home/pwd_is_123/codigo/ejemplos/multiversx_project2025/src/crowdfunding_sc.rs /home/pwd_is_123/codigo/ejemplos/multiversx_project2025/wasm/src/lib.rs

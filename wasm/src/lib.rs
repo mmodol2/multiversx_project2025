@@ -6,9 +6,9 @@
 
 // Init:                                 1
 // Upgrade:                              1
-// Endpoints:                            9
+// Endpoints:                           11
 // Async Callback (empty):               1
-// Total number of exported functions:  12
+// Total number of exported functions:  14
 
 #![no_std]
 
@@ -24,11 +24,13 @@ multiversx_sc_wasm_adapter::endpoints! {
         claim => claim
         status => status
         getCurrentFunds => get_current_funds
-        setMaxPerWallet => set_max_per_wallet
+        setLimits => set_limits
         getTarget => target
         getDeadline => deadline
         getDeposit => deposit
+        getMinPerTx => min_per_tx
         getMaxPerWallet => max_per_wallet
+        getMaxTotal => max_total
     )
 }
 

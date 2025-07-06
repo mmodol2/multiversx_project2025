@@ -16,9 +16,6 @@
             "version": "0.58.0"
         }
     },
-    "docs": [
-        "An empty contract. To be used as a template when starting a new contract from scratch."
-    ],
     "name": "CrowdfundingSc",
     "constructor": {
         "inputs": [
@@ -29,6 +26,18 @@
             {
                 "name": "deadline",
                 "type": "u64"
+            },
+            {
+                "name": "min_per_tx",
+                "type": "BigUint"
+            },
+            {
+                "name": "max_per_wallet",
+                "type": "BigUint"
+            },
+            {
+                "name": "max_total",
+                "type": "BigUint"
             }
         ],
         "outputs": []
@@ -74,12 +83,20 @@
             ]
         },
         {
-            "name": "setMaxPerWallet",
+            "name": "setLimits",
             "onlyOwner": true,
             "mutability": "mutable",
             "inputs": [
                 {
-                    "name": "max",
+                    "name": "min_per_tx",
+                    "type": "BigUint"
+                },
+                {
+                    "name": "max_per_wallet",
+                    "type": "BigUint"
+                },
+                {
+                    "name": "max_total",
                     "type": "BigUint"
                 }
             ],
@@ -121,7 +138,27 @@
             ]
         },
         {
+            "name": "getMinPerTx",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "BigUint"
+                }
+            ]
+        },
+        {
             "name": "getMaxPerWallet",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "BigUint"
+                }
+            ]
+        },
+        {
+            "name": "getMaxTotal",
             "mutability": "readonly",
             "inputs": [],
             "outputs": [

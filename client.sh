@@ -1,247 +1,145 @@
 #!/bin/bash
-# CONTRACT="erd1qqqqqqqqqqqqqpgqnzcdtzdung90ern55a3fprr3k7z9zq4v444qqdjk8e"   # Cambia por la dirección real del SC
-CONTRACT="erd1qqqqqqqqqqqqqpgqcmel0nnptj98xy4xzrucrls7x54h8s6a8xwstkctyk" 
-PEM="../lamevawallet.pem"      # Cambia por la ruta a tu wallet
+# CONFIGURACIÓ
+CONTRACT="erd1qqqqqqqqqqqqqpgqwtq6nej9r9afl9k4r7zl2nqyrwpcwrh38xwsmwf4g6"
+PEM="../lamevawallet.pem"
 PROXY="https://devnet-api.multiversx.com"
 CHAIN="D"
 
-# Función para convertir hex a decimal (maneja números grandes)
+# Conversió hex → decimal
 hex_to_decimal() {
   local hex_value=$1
-  if [[ $hex_value == "0x"* ]]; then
-    hex_value=${hex_value#0x}
-  fi
-  if [[ -z "$hex_value" || "$hex_value" == "00" || "$hex_value" == "" ]]; then
-    echo "0"
-  else
-    # Usar python para manejar números grandes
-    python3 -c "print(int('$hex_value', 16))" 2>/dev/null || echo "0"
-  fi
+  python3 -c "print(int('$hex_value', 16))" 2>/dev/null || echo "0"
 }
 
-# Función para convertir timestamp a fecha formato dd/MM/yy hh:mm:ss
-timestamp_to_date() {
-  local timestamp=$1
-  if [[ $timestamp -eq 0 ]]; then
-    echo "No definido"
-  else
-    # Intentar con sintaxis de macOS/BSD primero, luego con Linux
-    date -r "$timestamp" "+%d/%m/%y %H:%M:%S" 2>/dev/null || \
-    date -d "@$timestamp" "+%d/%m/%y %H:%M:%S" 2>/dev/null || \
-    echo "Fecha inválida"
-  fi
-}
-
-# Función para convertir denominación mínima a EGLD
+# Conversió denominació mínima → EGLD
 denomination_to_egld() {
   local denomination=$1
-  if [[ $denomination -eq 0 ]]; then
-    echo "0 EGLD"
-  else
-    python3 -c "print(f'{$denomination / 10**18:.18f} EGLD')" 2>/dev/null || echo "$denomination"
-  fi
+  python3 -c "print(f'{$denomination / 10**18:.18f} EGLD')" 2>/dev/null || echo "$denomination"
 }
 
-# Función para parsear status
+# STATUS: FundingPeriod, Successful, Failed
 parse_status() {
   local status=$1
   case $status in
-    ""|"00"|"0") echo "FundingPeriod (Período de financiación)" ;;
-    "01"|"1") echo "Successful (Exitoso)" ;;
-    "02"|"2") echo "Failed (Fallido)" ;;
-    *) echo "Estado desconocido: $status" ;;
+    ""|"00"|"0") echo "FundingPeriod" ;;
+    "01"|"1") echo "Successful" ;;
+    "02"|"2") echo "Failed" ;;
+    *) echo "Desconegut: $status" ;;
   esac
 }
 
+# FUNCIONS CONTRACTE
 fund() {
-  read -p "Cantidad de EGLD a donar (en denominación mínima, ej: 1000000000000000000 para 1 EGLD): " amount
+  read -p "Quantitat a donar (wei): " amount
   mxpy contract call $CONTRACT \
     --pem $PEM \
-    --recall-nonce \
     --gas-limit=5000000 \
     --value $amount \
     --function fund \
     --proxy $PROXY \
-    --chain D \
+    --chain $CHAIN \
     --send
 }
 
 claim() {
   mxpy contract call $CONTRACT \
     --pem $PEM \
-    --recall-nonce \
     --gas-limit=5000000 \
     --function claim \
     --proxy $PROXY \
-    --chain D \
+    --chain $CHAIN \
     --send
 }
 
 status() {
-  echo "Consultando estado del contrato..."
-  result=$(mxpy contract query $CONTRACT \
-    --function status \
-    --proxy $PROXY 2>/dev/null)
-  
-  if [[ $? -eq 0 ]]; then
-    # Extraer el valor hexadecimal de la respuesta (formato: ["hex_value"])
-    hex_status=$(echo "$result" | grep -o '"[^"]*"' | head -1 | tr -d '"')
-    
-    if [[ -n "$hex_status" && "$hex_status" != "" ]]; then
-      # Convertir hex a decimal para determinar el estado
-      decimal_status=$(hex_to_decimal "$hex_status")
-      parsed_status=$(parse_status "$decimal_status")
-      echo "Estado: $parsed_status"
-    else
-      parsed_status=$(parse_status "")
-      echo "Estado: $parsed_status"
-    fi
-  else
-    echo "Error al consultar el estado"
-  fi
+  hex=$(mxpy contract query $CONTRACT --function status --proxy $PROXY | jq -r '.[0]')
+  dec=$(hex_to_decimal "$hex")
+  parsed=$(parse_status "$dec")
+  echo "Status: $parsed"
 }
 
 get_current_funds() {
-  echo "Consultando fondos actuales..."
-  result=$(mxpy contract query $CONTRACT \
-    --function getCurrentFunds \
-    --proxy $PROXY 2>/dev/null)
-  
-  if [[ $? -eq 0 ]]; then
-    # Extraer el valor hexadecimal de la respuesta (formato: ["hex_value"])
-    hex_funds=$(echo "$result" | grep -o '"[^"]*"' | head -1 | tr -d '"')
-    if [[ -n "$hex_funds" && "$hex_funds" != "" ]]; then
-      decimal_funds=$(hex_to_decimal "$hex_funds")
-      egld_funds=$(denomination_to_egld "$decimal_funds")
-      echo "Fondos actuales: $egld_funds ($decimal_funds)"
-    else
-      echo "Fondos actuales: 0 EGLD"
-      echo "Respuesta raw: $result"
-    fi
-  else
-    echo "Error al consultar los fondos"
-  fi
+  hex=$(mxpy contract query $CONTRACT --function getCurrentFunds --proxy $PROXY | jq -r '.[0]')
+  dec=$(hex_to_decimal "$hex")
+  egld=$(denomination_to_egld "$dec")
+  echo "Fons actuals: $egld ($dec wei)"
 }
 
 get_target() {
-  echo "Consultando meta del crowdfunding..."
-  result=$(mxpy contract query $CONTRACT \
-    --function getTarget \
-    --proxy $PROXY 2>/dev/null)
-  
-  if [[ $? -eq 0 ]]; then
-    # Extraer el valor hexadecimal de la respuesta (formato: ["hex_value"])
-    hex_target=$(echo "$result" | grep -o '"[^"]*"' | head -1 | tr -d '"')
-    if [[ -n "$hex_target" && "$hex_target" != "" ]]; then
-      decimal_target=$(hex_to_decimal "$hex_target")
-      egld_target=$(denomination_to_egld "$decimal_target")
-      echo "Meta: $egld_target ($decimal_target)"
-    else
-      echo "No se pudo parsear la meta"
-      echo "Respuesta raw: $result"
-    fi
-  else
-    echo "Error al consultar la meta"
-  fi
+  hex=$(mxpy contract query $CONTRACT --function getTarget --proxy $PROXY | jq -r '.[0]')
+  dec=$(hex_to_decimal "$hex")
+  egld=$(denomination_to_egld "$dec")
+  echo "Target: $egld ($dec wei)"
 }
 
 get_deadline() {
-  echo "Consultando fecha límite..."
-  result=$(mxpy contract query $CONTRACT \
-    --function getDeadline \
-    --proxy $PROXY 2>/dev/null)
-  
-  if [[ $? -eq 0 ]]; then
-    # Extraer el valor hexadecimal de la respuesta (formato: ["hex_value"])
-    hex_deadline=$(echo "$result" | grep -o '"[^"]*"' | head -1 | tr -d '"')
-    if [[ -n "$hex_deadline" && "$hex_deadline" != "" ]]; then
-      decimal_deadline=$(hex_to_decimal "$hex_deadline")
-      date_deadline=$(timestamp_to_date "$decimal_deadline")
-      echo "Fecha límite: $date_deadline (timestamp: $decimal_deadline)"
-    else
-      echo "No se pudo parsear la fecha límite"
-      echo "Respuesta raw: $result"
-    fi
-  else
-    echo "Error al consultar la fecha límite"
-  fi
+  hex=$(mxpy contract query $CONTRACT --function getDeadline --proxy $PROXY | jq -r '.[0]')
+  dec=$(hex_to_decimal "$hex")
+  date=$(date -d "@$dec" "+%d/%m/%Y %H:%M:%S" 2>/dev/null || date -r "$dec")
+  echo "Deadline: $date ($dec)"
 }
 
 get_deposit() {
-  read -p "Dirección del donante: " donor
-  echo "Consultando donación de $donor..."
-  result=$(mxpy contract query $CONTRACT \
-    --function getDeposit \
-    --proxy $PROXY \
-    --arguments $donor 2>/dev/null)
-  
-  if [[ $? -eq 0 ]]; then
-    # Extraer el valor hexadecimal de la respuesta (formato: ["hex_value"])
-    hex_deposit=$(echo "$result" | grep -o '"[^"]*"' | head -1 | tr -d '"')
-    if [[ -n "$hex_deposit" && "$hex_deposit" != "" ]]; then
-      decimal_deposit=$(hex_to_decimal "$hex_deposit")
-      egld_deposit=$(denomination_to_egld "$decimal_deposit")
-      echo "Donación de $donor: $egld_deposit ($decimal_deposit)"
-    else
-      echo "Esta dirección no ha donado nada o donación = 0 EGLD"
-      echo "Respuesta raw: $result"
-    fi
-  else
-    echo "Error al consultar la donación"
-  fi
+  read -p "Address donant: " donor
+  hex=$(mxpy contract query $CONTRACT --function getDeposit --arguments $donor --proxy $PROXY | jq -r '.[0]')
+  dec=$(hex_to_decimal "$hex")
+  egld=$(denomination_to_egld "$dec")
+  echo "Donació de $donor: $egld ($dec wei)"
 }
 
-set_max(){
-  
-  # 0.1 EGLD en wei (BigUint)
-  MAX_AMOUNT="100000000000000000"
-  #           1000000000000000000
+# NOU: assignar tots els límits
+set_limits() {
+  read -p "Mínim per tx (wei): " min_tx
+  read -p "Màxim per wallet (wei): " max_wallet
+  read -p "Màxim total projecte (wei): " max_total
+
   mxpy contract call $CONTRACT \
-    --function setMaxPerWallet \
-    --arguments $MAX_AMOUNT \
-    --recall-nonce \
+    --function setLimits \
+    --arguments $min_tx $max_wallet $max_total \
     --gas-limit 60000000 \
     --pem $PEM \
     --proxy $PROXY \
     --chain $CHAIN \
     --send
-
 }
 
-
-get_max(){
-  HEX=$(mxpy contract query $CONTRACT \
-    --function getMaxPerWallet \
-    --proxy $PROXY | jq -r '.[0]')
-
-  echo "Hex:   $HEX"
-
-  DEC=$(echo "ibase=16; ${HEX^^}" | bc)
-  echo "Decimal (wei): $DEC"
-
-  # calcula EGLD amb 18 decimals
-  EGLD=$(echo "scale=18; $DEC / 1000000000000000000" | bc)
-  echo "Decimal (EGLD): $EGLD"
+# NOU: consultar tots els límits
+get_limits() {
+  echo "== Límits del contracte =="
+  # min per tx
+  min_hex=$(mxpy contract query $CONTRACT --function getMinPerTx --proxy $PROXY | jq -r '.[0]')
+  min_dec=$(hex_to_decimal "$min_hex")
+  min_egld=$(denomination_to_egld "$min_dec")
+  echo "Mín per tx: $min_egld ($min_dec wei)"
+  # max per wallet
+  max_wallet_hex=$(mxpy contract query $CONTRACT --function getMaxPerWallet --proxy $PROXY | jq -r '.[0]')
+  max_wallet_dec=$(hex_to_decimal "$max_wallet_hex")
+  max_wallet_egld=$(denomination_to_egld "$max_wallet_dec")
+  echo "Màx per wallet: $max_wallet_egld ($max_wallet_dec wei)"
+  # max total
+  max_total_hex=$(mxpy contract query $CONTRACT --function getMaxTotal --proxy $PROXY | jq -r '.[0]')
+  max_total_dec=$(hex_to_decimal "$max_total_hex")
+  max_total_egld=$(denomination_to_egld "$max_total_dec")
+  echo "Màx total projecte: $max_total_egld ($max_total_dec wei)"
 }
 
-
+# MENU INTERACTIU
 while true; do
   echo ""
-  echo "===== Menú Crowdfunding SC ====="
+  echo "==== Crowdfunding SC Menu ===="
   echo "1) Donar (fund)"
-  echo "2) Reclamar fons (claim)"
-  echo "3) Consultar estat (status)"
-  echo "4) Consultar fons actuals (getCurrentFunds)"
-  echo "5) Consultar meta (getTarget)"
-  echo "6) Consultar data límit (getDeadline)"
-  echo "7) Consultar donació d'una address (getDeposit)"
-  echo "8) Assignar maxim contracte (setMax)"
-  echo "9) Consultar maxim contracte (getDeposit)"
+  echo "2) Reclamar (claim)"
+  echo "3) Status"
+  echo "4) Fons actuals"
+  echo "5) Target"
+  echo "6) Deadline"
+  echo "7) Donació d'una address"
+  echo "8) Assignar límits globals (min, max_wallet, max_total)"
+  echo "9) Consultar límits globals"
   echo "0) Sortir"
-  echo "================================"
-  read -p "Selecciona una opció: " opcion
-
-  case $opcion in
+  echo "=============================="
+  read -p "Opció: " op
+  case $op in
     1) fund ;;
     2) claim ;;
     3) status ;;
@@ -249,9 +147,9 @@ while true; do
     5) get_target ;;
     6) get_deadline ;;
     7) get_deposit ;;
-    8) set_max ;;
-    9) get_max ;;
-    0) echo "¡See you soon!"; break ;;
+    8) set_limits ;;
+    9) get_limits ;;
+    0) echo "Sortint..."; break ;;
     *) echo "Opció no vàlida." ;;
   esac
 done

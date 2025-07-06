@@ -14,15 +14,24 @@ fail:erd1qqqqqqqqqqqqqpgqe092g6vq4xq3nzgelt6mrhm07dlpdvls8xwslvjk55
 ********Pel time stamp
 https://www.epochconverter.com/
 25/06/25 02:23:14 (timestamp: 1750810994)
+8.8.25  1754611650
 
-mxpy contract deploy --bytecode ./output/crowdfunding-sc.wasm --proxy=https://devnet-gateway.multiversx.com --recall-nonce --arguments 10000000000000000000 1750810994 --gas-limit 20000000 --pem=lamevawallet.pem --send
+mxpy contract deploy --bytecode ./output/crowdfunding-sc.wasm --proxy=https://devnet-gateway.multiversx.com --recall-nonce --arguments 10000000000000000000 1754611650 --gas-limit 20000000 --pem=lamevawallet.pem --send
 
 Exit:erd1qqqqqqqqqqqqqpgqcmel0nnptj98xy4xzrucrls7x54h8s6a8xwstkctyk
 
 
 mxpy contract deploy --bytecode ./output/crowdfunding-sc.wasm --proxy=https://devnet-gateway.multiversx.com --recall-nonce --arguments 10000000000000000000 1751323156 --gas-limit 20000000 --pem=lamevawallet.pem --send
 
-
+mxpy contract deploy \
+  --bytecode ./output/crowdfunding-sc.wasm \
+  --proxy=https://devnet-gateway.multiversx.com \
+  --recall-nonce \
+  --arguments 10000000000000000000 1754611650 10000000000000000 100000000000000000 2000000000000000000 \
+  --gas-limit 80000000 \
+  --pem=../lamevawallet.pem \
+  --chain D \
+  --send
 
 
 *** recompilar amb els canvis
@@ -33,7 +42,7 @@ sc-meta all build
 ./upgrade.sh 
 *** actualitzar contracte
 
-./setmax.sh
+*** integrat a client.sh -- ./setmax.sh
 *** ficar max per wallet a 0.1eGLD
 
 
