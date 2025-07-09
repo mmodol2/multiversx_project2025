@@ -202,13 +202,5 @@ Quantitat a donar (wei): 10000000000000000
 ---
 
 > ✍️ Projecte per proves a Devnet.
-> Pots adaptar els valors i límits fàcilment per experimentar.
 
-```
-
----
-
-✅ Aquest fitxer està **en pur Markdown GitHub**, així que pots copiar-lo directament com `README.md` i es veurà perfectament al teu repositori.
-
-Si vols, et puc fer un petit `diagrama mermaid` dins el mateix README per mostrar el flux `donar → status → claim/refund`. Vols que t’ho afegeixi?
 ```
